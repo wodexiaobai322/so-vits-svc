@@ -31,6 +31,9 @@ logging.getLogger('multipart').setLevel(logging.WARNING)
 model = None
 spk = None
 debug = False
+sid = None
+mix_model_output1 = None
+debug_button = None
 
 local_model_root = './trained'
 
@@ -270,93 +273,97 @@ def local_model_refresh_fn():
 
 def debug_change():
     global debug
-    debug = debug_button.value
+    if debug_button is not None:
+        debug = debug_button.value
 
-with gr.Blocks(
-    theme=gr.themes.Base(
-        primary_hue = gr.themes.colors.green,
-        font=["Source Sans Pro", "Arial", "sans-serif"],
-        font_mono=['JetBrains mono', "Consolas", 'Courier New']
-    ),
-) as app:
-    with gr.Tabs():
-        with gr.TabItem("推理"):
-            gr.Markdown(value="""
-                So-vits-svc 4.0 推理 webui
-                """)
-            with gr.Row(variant="panel"):
-                with gr.Column():
-                    gr.Markdown(value="""
-                        <font size=2> 模型设置</font>
-                        """)
-                    with gr.Tabs():
-                        # invisible checkbox that tracks tab status
-                        local_model_enabled = gr.Checkbox(value=False, visible=False)
-                        with gr.TabItem('上传') as local_model_tab_upload:
-                            with gr.Row():
-                                model_path = gr.File(label="选择模型文件")
-                                config_path = gr.File(label="选择配置文件")
-                        with gr.TabItem('本地') as local_model_tab_local:
-                            gr.Markdown(f'模型应当放置于{local_model_root}文件夹下')
-                            local_model_refresh_btn = gr.Button('刷新本地模型列表')
-                            local_model_selection = gr.Dropdown(label='选择模型文件夹', choices=[], interactive=True)
-                    with gr.Row():
-                        diff_model_path = gr.File(label="选择扩散模型文件")
-                        diff_config_path = gr.File(label="选择扩散模型配置文件")
-                    cluster_model_path = gr.File(label="选择聚类模型或特征检索文件（没有可以不选）")
-                    device = gr.Dropdown(label="推理设备，默认为自动选择CPU和GPU", choices=["Auto",*cuda.keys(),"cpu"], value="Auto")
-                    enhance = gr.Checkbox(label="是否使用NSF_HIFIGAN增强,该选项对部分训练集少的模型有一定的音质增强效果，但是对训练好的模型有反面效果，默认关闭", value=False)
-                    only_diffusion = gr.Checkbox(label="是否使用全扩散推理，开启后将不使用So-VITS模型，仅使用扩散模型进行完整扩散推理，默认关闭", value=False)
-                with gr.Column():
-                    gr.Markdown(value="""
-                        <font size=3>左侧文件全部选择完毕后(全部文件模块显示download)，点击“加载模型”进行解析：</font>
-                        """)
-                    model_load_button = gr.Button(value="加载模型", variant="primary")
-                    model_unload_button = gr.Button(value="卸载模型", variant="primary")
-                    sid = gr.Dropdown(label="音色（说话人）")
-                    sid_output = gr.Textbox(label="Output Message")
+BUILD_WEBUI = os.environ.get("SOVITS_WEBUI_HEADLESS") != "1"
+
+if BUILD_WEBUI:
+    with gr.Blocks(
+        theme=gr.themes.Base(
+            primary_hue = gr.themes.colors.green,
+            font=["Source Sans Pro", "Arial", "sans-serif"],
+            font_mono=['JetBrains mono', "Consolas", 'Courier New']
+        ),
+    ) as app:
+        with gr.Tabs():
+            with gr.TabItem("推理"):
+                gr.Markdown(value="""
+                    So-vits-svc 4.0 推理 webui
+                    """)
+                with gr.Row(variant="panel"):
+                    with gr.Column():
+                        gr.Markdown(value="""
+                            <font size=2> 模型设置</font>
+                            """)
+                        with gr.Tabs():
+                            # invisible checkbox that tracks tab status
+                            local_model_enabled = gr.Checkbox(value=False, visible=False)
+                            with gr.TabItem('上传') as local_model_tab_upload:
+                                with gr.Row():
+                                    model_path = gr.File(label="选择模型文件")
+                                    config_path = gr.File(label="选择配置文件")
+                            with gr.TabItem('本地') as local_model_tab_local:
+                                gr.Markdown(f'模型应当放置于{local_model_root}文件夹下')
+                                local_model_refresh_btn = gr.Button('刷新本地模型列表')
+                                local_model_selection = gr.Dropdown(label='选择模型文件夹', choices=[], interactive=True)
+                        with gr.Row():
+                            diff_model_path = gr.File(label="选择扩散模型文件")
+                            diff_config_path = gr.File(label="选择扩散模型配置文件")
+                        cluster_model_path = gr.File(label="选择聚类模型或特征检索文件（没有可以不选）")
+                        device = gr.Dropdown(label="推理设备，默认为自动选择CPU和GPU", choices=["Auto",*cuda.keys(),"cpu"], value="Auto")
+                        enhance = gr.Checkbox(label="是否使用NSF_HIFIGAN增强,该选项对部分训练集少的模型有一定的音质增强效果，但是对训练好的模型有反面效果，默认关闭", value=False)
+                        only_diffusion = gr.Checkbox(label="是否使用全扩散推理，开启后将不使用So-VITS模型，仅使用扩散模型进行完整扩散推理，默认关闭", value=False)
+                    with gr.Column():
+                        gr.Markdown(value="""
+                            <font size=3>左侧文件全部选择完毕后(全部文件模块显示download)，点击“加载模型”进行解析：</font>
+                            """)
+                        model_load_button = gr.Button(value="加载模型", variant="primary")
+                        model_unload_button = gr.Button(value="卸载模型", variant="primary")
+                        sid = gr.Dropdown(label="音色（说话人）")
+                        sid_output = gr.Textbox(label="Output Message")
 
 
-            with gr.Row(variant="panel"):
-                with gr.Column():
-                    gr.Markdown(value="""
-                        <font size=2> 推理设置</font>
-                        """)
-                    auto_f0 = gr.Checkbox(label="自动f0预测，配合聚类模型f0预测效果更好,会导致变调功能失效（仅限转换语音，歌声勾选此项会究极跑调）", value=False)
-                    f0_predictor = gr.Dropdown(label="选择F0预测器,可选择crepe,pm,dio,harvest,rmvpe,默认为pm(注意：crepe为原F0使用均值滤波器)", choices=["pm","dio","harvest","crepe","rmvpe"], value="pm")
-                    vc_transform = gr.Number(label="变调（整数，可以正负，半音数量，升高八度就是12）", value=0)
-                    cluster_ratio = gr.Number(label="聚类模型/特征检索混合比例，0-1之间，0即不启用聚类/特征检索。使用聚类/特征检索能提升音色相似度，但会导致咬字下降（如果使用建议0.5左右）", value=0)
-                    slice_db = gr.Number(label="切片阈值", value=-40)
-                    output_format = gr.Radio(label="音频输出格式", choices=["wav", "flac", "mp3"], value = "wav")
-                    noise_scale = gr.Number(label="noise_scale 建议不要动，会影响音质，玄学参数", value=0.4)
-                    k_step = gr.Slider(label="浅扩散步数，只有使用了扩散模型才有效，步数越大越接近扩散模型的结果", value=100, minimum = 1, maximum = 1000)
-                with gr.Column():
-                    pad_seconds = gr.Number(label="推理音频pad秒数，由于未知原因开头结尾会有异响，pad一小段静音段后就不会出现", value=0.5)
-                    cl_num = gr.Number(label="音频自动切片，0为不切片，单位为秒(s)", value=0)
-                    lg_num = gr.Number(label="两端音频切片的交叉淡入长度，如果自动切片后出现人声不连贯可调整该数值，如果连贯建议采用默认值0，注意，该设置会影响推理速度，单位为秒/s", value=0)
-                    lgr_num = gr.Number(label="自动音频切片后，需要舍弃每段切片的头尾。该参数设置交叉长度保留的比例，范围0-1,左开右闭", value=0.75)
-                    enhancer_adaptive_key = gr.Number(label="使增强器适应更高的音域(单位为半音数)|默认为0", value=0)
-                    cr_threshold = gr.Number(label="F0过滤阈值，只有启动crepe时有效. 数值范围从0-1. 降低该值可减少跑调概率，但会增加哑音", value=0.05)
-                    loudness_envelope_adjustment = gr.Number(label="输入源响度包络替换输出响度包络融合比例，越靠近1越使用输出响度包络", value = 0)
-                    second_encoding = gr.Checkbox(label = "二次编码，浅扩散前会对原始音频进行二次编码，玄学选项，效果时好时差，默认关闭", value=False)
-                    use_spk_mix = gr.Checkbox(label = "动态声线融合", value = False, interactive = False)
-            with gr.Tabs():
-                with gr.TabItem("音频转音频"):
-                    vc_input3 = gr.Audio(label="选择音频", type="filepath")
-                    vc_submit = gr.Button("音频转换", variant="primary")
-                with gr.TabItem("文字转音频"):
-                    text2tts=gr.Textbox(label="在此输入要转译的文字。注意，使用该功能建议打开F0预测，不然会很怪")
-                    with gr.Row():
-                        tts_gender = gr.Radio(label = "说话人性别", choices = ["男","女"], value = "男")
-                        tts_lang = gr.Dropdown(label = "选择语言，Auto为根据输入文字自动识别", choices=SUPPORTED_LANGUAGES, value = "Auto")
-                        tts_rate = gr.Slider(label = "TTS语音变速（倍速相对值）", minimum = -1, maximum = 3, value = 0, step = 0.1)
-                        tts_volume = gr.Slider(label = "TTS语音音量（相对值）", minimum = -1, maximum = 1.5, value = 0, step = 0.1)
-                    vc_submit2 = gr.Button("文字转换", variant="primary")
-            with gr.Row():
-                with gr.Column():
-                    vc_output1 = gr.Textbox(label="Output Message")
-                with gr.Column():
-                    vc_output2 = gr.Audio(label="Output Audio", interactive=False)
+                with gr.Row(variant="panel"):
+                    with gr.Column():
+                        gr.Markdown(value="""
+                            <font size=2> 推理设置</font>
+                            """)
+                        auto_f0 = gr.Checkbox(label="自动f0预测，配合聚类模型f0预测效果更好,会导致变调功能失效（仅限转换语音，歌声勾选此项会究极跑调）", value=False)
+                        f0_predictor = gr.Dropdown(label="选择F0预测器,可选择crepe,pm,dio,harvest,rmvpe,默认为pm(注意：crepe为原F0使用均值滤波器)", choices=["pm","dio","harvest","crepe","rmvpe"], value="pm")
+                        vc_transform = gr.Number(label="变调（整数，可以正负，半音数量，升高八度就是12）", value=0)
+                        cluster_ratio = gr.Number(label="聚类模型/特征检索混合比例，0-1之间，0即不启用聚类/特征检索。使用聚类/特征检索能提升音色相似度，但会导致咬字下降（如果使用建议0.5左右）", value=0)
+                        slice_db = gr.Number(label="切片阈值", value=-40)
+                        output_format = gr.Radio(label="音频输出格式", choices=["wav", "flac", "mp3"], value = "wav")
+                        noise_scale = gr.Number(label="noise_scale 建议不要动，会影响音质，玄学参数", value=0.4)
+                        k_step = gr.Slider(label="浅扩散步数，只有使用了扩散模型才有效，步数越大越接近扩散模型的结果", value=100, minimum = 1, maximum = 1000)
+                    with gr.Column():
+                        pad_seconds = gr.Number(label="推理音频pad秒数，由于未知原因开头结尾会有异响，pad一小段静音段后就不会出现", value=0.5)
+                        cl_num = gr.Number(label="音频自动切片，0为不切片，单位为秒(s)", value=0)
+                        lg_num = gr.Number(label="两端音频切片的交叉淡入长度，如果自动切片后出现人声不连贯可调整该数值，如果连贯建议采用默认值0，注意，该设置会影响推理速度，单位为秒/s", value=0)
+                        lgr_num = gr.Number(label="自动音频切片后，需要舍弃每段切片的头尾。该参数设置交叉长度保留的比例，范围0-1,左开右闭", value=0.75)
+                        enhancer_adaptive_key = gr.Number(label="使增强器适应更高的音域(单位为半音数)|默认为0", value=0)
+                        cr_threshold = gr.Number(label="F0过滤阈值，只有启动crepe时有效. 数值范围从0-1. 降低该值可减少跑调概率，但会增加哑音", value=0.05)
+                        loudness_envelope_adjustment = gr.Number(label="输入源响度包络替换输出响度包络融合比例，越靠近1越使用输出响度包络", value = 0)
+                        second_encoding = gr.Checkbox(label = "二次编码，浅扩散前会对原始音频进行二次编码，玄学选项，效果时好时差，默认关闭", value=False)
+                        use_spk_mix = gr.Checkbox(label = "动态声线融合", value = False, interactive = False)
+                with gr.Tabs():
+                    with gr.TabItem("音频转音频"):
+                        vc_input3 = gr.Audio(label="选择音频", type="filepath")
+                        vc_submit = gr.Button("音频转换", variant="primary")
+                    with gr.TabItem("文字转音频"):
+                        text2tts=gr.Textbox(label="在此输入要转译的文字。注意，使用该功能建议打开F0预测，不然会很怪")
+                        with gr.Row():
+                            tts_gender = gr.Radio(label = "说话人性别", choices = ["男","女"], value = "男")
+                            tts_lang = gr.Dropdown(label = "选择语言，Auto为根据输入文字自动识别", choices=SUPPORTED_LANGUAGES, value = "Auto")
+                            tts_rate = gr.Slider(label = "TTS语音变速（倍速相对值）", minimum = -1, maximum = 3, value = 0, step = 0.1)
+                            tts_volume = gr.Slider(label = "TTS语音音量（相对值）", minimum = -1, maximum = 1.5, value = 0, step = 0.1)
+                        vc_submit2 = gr.Button("文字转换", variant="primary")
+                with gr.Row():
+                    with gr.Column():
+                        vc_output1 = gr.Textbox(label="Output Message")
+                    with gr.Column():
+                        vc_output2 = gr.Audio(label="Output Audio", interactive=False)
 
         with gr.TabItem("小工具/实验室特性"):
             gr.Markdown(value="""
@@ -423,8 +430,9 @@ with gr.Blocks(
         debug_button.change(debug_change,[],[])
         model_load_button.click(modelAnalysis,[model_path,config_path,cluster_model_path,device,enhance,diff_model_path,diff_config_path,only_diffusion,use_spk_mix,local_model_enabled,local_model_selection],[sid,sid_output])
         model_unload_button.click(modelUnload,[],[sid,sid_output])
-    os.system("start http://127.0.0.1:7860")
-    app.launch()
+    if __name__ == "__main__":
+        os.system("start http://127.0.0.1:7860")
+        app.launch()
 
 
  
