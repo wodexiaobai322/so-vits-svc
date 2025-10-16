@@ -34,6 +34,12 @@ SOVITS_WEBUI_HEADLESS=1 pytest -m e2e tests/e2e
 
 成功后会验证真实 `Svc` 推理与 `webUI.vc_fn` 调用链是否能够产出非空音频。
 
+当前端到端用例覆盖：
+- 直接调用 `Svc.infer` 与 `webUI.vc_fn` 的整体推理流程；
+- 纯扩散与浅扩散两种推理模式；
+- Flask API `/voiceChangeModel` 与 `/wav2wav` 的请求响应；
+- CLI 脚本 `inference_main.py` 的文件输入输出。
+
 ## Extending the Suite
 
 - Add new tests under `tests/`, grouping related behaviours per module.
