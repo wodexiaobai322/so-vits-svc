@@ -20,7 +20,11 @@ def _ensure_stubs():
         librosa_stub.to_mono = lambda wav: np.asarray(wav)
         librosa_stub.load = lambda path, sr=None: (np.zeros(1600, dtype=np.float32), 16000)
         librosa_stub.resample = lambda data, orig_sr, target_sr: np.asarray(data)
+        filters_module = types.ModuleType("librosa.filters")
+        filters_module.mel = lambda sr, n_fft, n_mels, fmin, fmax: np.ones((n_mels, n_fft // 2 + 1), dtype=np.float32)
+        librosa_stub.filters = filters_module
         sys.modules["librosa"] = librosa_stub
+        sys.modules["librosa.filters"] = filters_module
 
     if "sklearn" not in sys.modules:
         class _DummyKMeans:

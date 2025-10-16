@@ -1,0 +1,11 @@
+[run]
+omit =
+    cluster/*
+    compress_model.py
+    data_utils.py
+    diffusion/*
+    models.py
+    modules/*
+    preprocess_*.py
+    train*.py
+    edgetts/*

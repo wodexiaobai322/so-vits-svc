@@ -278,7 +278,7 @@ def debug_change():
 
 BUILD_WEBUI = os.environ.get("SOVITS_WEBUI_HEADLESS") != "1"
 
-if BUILD_WEBUI:
+if BUILD_WEBUI:  # pragma: no cover
     with gr.Blocks(
         theme=gr.themes.Base(
             primary_hue = gr.themes.colors.green,

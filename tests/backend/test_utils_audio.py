@@ -38,6 +38,19 @@ def test_normalize_f0_scales_with_mask():
     assert torch.allclose(zero_flat[: f0.numel()], f0.reshape(-1))
 
 
+def test_normalize_f0_random_scale_varies_output():
+    torch.manual_seed(42)
+    f0 = torch.ones(1, 1, 4) * 220
+    x_mask = torch.ones(1, 1, 4)
+    uv = torch.ones(1, 1, 4)
+    scaled = normalize_f0(f0.clone(), x_mask, uv, random_scale=True)
+
+    scaled_primary = scaled[..., 0]
+    assert scaled_primary.shape == f0.shape
+    assert not torch.allclose(scaled_primary, f0)
+    assert not torch.isnan(scaled).any()
+
+
 def test_f0_to_coarse_bounds():
     coarse = f0_to_coarse(torch.tensor([[0.0, 1200.0]]))
     assert coarse.shape == (1, 2)

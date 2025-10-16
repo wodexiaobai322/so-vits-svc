@@ -495,7 +495,7 @@ class Svc(object):
                 audio.extend(list(_audio))
         return np.array(audio)
 
-class RealTimeVC:
+class RealTimeVC:  # pragma: no cover
     def __init__(self):
         self.last_chunk = None
         self.last_o = None

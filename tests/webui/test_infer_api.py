@@ -3,6 +3,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 
 
 def test_vc_infer_builds_expected_path(monkeypatch, tmp_path, webui_module):
@@ -337,3 +338,113 @@ def test_vc_fn2_runs_tts_pipeline(monkeypatch, webui_module):
     assert np.allclose(writes[0]["data"], np.ones(4) * 2)
     assert writes[1]["removed"] == "tts.wav"
     assert infer_calls[0][0][2] == "tts.wav"
+
+
+def test_vc_fn2_non_auto_language(monkeypatch, webui_module):
+    webui_module.model = SimpleNamespace(cluster_model=object(), feature_retrieval=False)
+
+    run_calls = []
+    monkeypatch.setattr(webui_module.subprocess, "run", lambda cmd: run_calls.append(cmd))
+    monkeypatch.setattr(webui_module.librosa, "load", lambda path: (np.ones(2, dtype=np.float32), 22050))
+    monkeypatch.setattr(webui_module.librosa, "resample", lambda data, orig_sr, target_sr: data)
+    monkeypatch.setattr(webui_module.soundfile, "write", lambda *a, **k: None)
+    monkeypatch.setattr(webui_module.os, "remove", lambda path: None)
+    monkeypatch.setattr(webui_module, "vc_infer", lambda *a, **k: "result.wav")
+
+    msg, output = webui_module.vc_fn2(
+        _text="hello",
+        _lang="en-US",
+        _gender="男",
+        _rate=0.2,
+        _volume=-0.1,
+        sid="demo",
+        output_format="wav",
+        vc_transform=0,
+        auto_f0=False,
+        cluster_ratio=0,
+        slice_db=-40,
+        noise_scale=0.4,
+        pad_seconds=0.5,
+        cl_num=0,
+        lg_num=0,
+        lgr_num=0.75,
+        f0_predictor="pm",
+        enhancer_adaptive_key=0,
+        cr_threshold=0.05,
+        k_step=100,
+        use_spk_mix=False,
+        second_encoding=False,
+        loudness_envelope_adjustment=0,
+    )
+
+    assert msg == "Success"
+    assert output == "result.wav"
+    assert run_calls[0][3] == "en-US"
+    assert len(run_calls[0]) == 6
+
+
+@pytest.mark.parametrize(
+    "flags, expected_suffix",
+    [
+        ({"shallow_diffusion": True, "only_diffusion": False}, "sovdiff"),
+        ({"shallow_diffusion": False, "only_diffusion": True}, "diff"),
+    ],
+)
+def test_vc_infer_sets_mode_labels(monkeypatch, tmp_path, webui_module, flags, expected_suffix):
+    monkeypatch.chdir(tmp_path)
+
+    class DummyModel:
+        def __init__(self, shallow, only):
+            self.shallow_diffusion = shallow
+            self.only_diffusion = only
+            self.target_sample = 44100
+            self.cleared = False
+
+        def slice_inference(self, *args, **kwargs):
+            return np.linspace(0, 1, num=8, dtype=np.float32)
+
+        def clear_empty(self):
+            self.cleared = True
+
+    webui_module.model = DummyModel(
+        shallow=flags["shallow_diffusion"],
+        only=flags["only_diffusion"],
+    )
+
+    write_calls = {}
+
+    def fake_write(path, data, samplerate, format=None, subtype=None):
+        write_calls["path"] = Path(path)
+        write_calls["data"] = np.asarray(data)
+        write_calls["sr"] = samplerate
+        write_calls["format"] = format
+
+    monkeypatch.setattr(webui_module.soundfile, "write", fake_write)
+
+    output = webui_module.vc_infer(
+        output_format="wav",
+        sid="demo",
+        audio_path="input.wav",
+        truncated_basename="sample",
+        vc_transform=0,
+        auto_f0=False,
+        cluster_ratio=0,
+        slice_db=-40,
+        noise_scale=0.4,
+        pad_seconds=0.1,
+        cl_num=0,
+        lg_num=0,
+        lgr_num=0.5,
+        f0_predictor="pm",
+        enhancer_adaptive_key=0,
+        cr_threshold=0.05,
+        k_step=10,
+        use_spk_mix=False,
+        second_encoding=False,
+        loudness_envelope_adjustment=1,
+    )
+
+    assert write_calls["sr"] == 44100
+    assert write_calls["format"] == "wav"
+    assert webui_module.model.cleared
+    assert output.endswith(f"{expected_suffix}.wav")

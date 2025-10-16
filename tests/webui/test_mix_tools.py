@@ -29,6 +29,17 @@ def test_mix_submit_click_invalid_payload(webui_module):
         webui_module.mix_submit_click("not-json", "凸组合")
 
 
+def test_mix_submit_click_blank_raises(monkeypatch, webui_module):
+    monkeypatch.setattr(webui_module, "debug", True)
+    called = {}
+    monkeypatch.setattr(webui_module.traceback, "print_exc", lambda: called.setdefault("invoked", True))
+
+    with pytest.raises(gr.Error):
+        webui_module.mix_submit_click("   ", "凸组合")
+
+    assert called["invoked"] is True
+
+
 def test_upload_mix_append_file_combines_existing(webui_module):
     class DummyComponent:
         def update(self, **kwargs):
@@ -47,6 +58,39 @@ def test_upload_mix_append_file_combines_existing(webui_module):
 
     assert paths == ["a.pth", "b.pth"]
     assert json.loads(update["value"]) == {"a.pth": 100, "b.pth": 100}
+
+
+def test_upload_mix_append_file_primary_list(webui_module):
+    class DummyComponent:
+        def update(self, **kwargs):
+            return kwargs
+
+    webui_module.mix_model_output1 = DummyComponent()
+
+    class DummyFile:
+        def __init__(self, name):
+            self.name = name
+
+    paths, update = webui_module.upload_mix_append_file([DummyFile("solo.pth")], None)
+
+    assert paths == ["solo.pth"]
+    assert json.loads(update["value"]) == {"solo.pth": 100}
+
+
+def test_upload_mix_append_file_error_propagates(monkeypatch, webui_module):
+    class DummyComponent:
+        def update(self, **kwargs):
+            return kwargs
+
+    webui_module.mix_model_output1 = DummyComponent()
+    monkeypatch.setattr(webui_module, "debug", True)
+    called = {}
+    monkeypatch.setattr(webui_module.traceback, "print_exc", lambda: called.setdefault("invoked", True))
+
+    with pytest.raises(gr.Error):
+        webui_module.upload_mix_append_file(None, None)
+
+    assert called["invoked"] is True
 
 
 def test_updata_mix_info_handles_none(webui_module):
