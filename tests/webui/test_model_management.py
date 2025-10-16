@@ -130,6 +130,33 @@ def test_model_unload_without_model(monkeypatch, webui_module):
     assert message == "没有模型需要卸载!"
 
 
+def test_model_analysis_missing_config(monkeypatch, tmp_path, webui_module):
+    dummy_sid = DummyDropdown()
+    monkeypatch.setattr(webui_module, "sid", dummy_sid)
+    monkeypatch.setattr(webui_module, "debug", False, raising=False)
+    model_path = tmp_path / "voice.pth"
+    model_path.write_bytes(b"fake")
+
+    class UploadFile:
+        def __init__(self, path):
+            self.name = str(path)
+
+    with pytest.raises(webui_module.gr.Error):
+        webui_module.modelAnalysis(
+            model_path=UploadFile(model_path),
+            config_path=None,
+            cluster_model_path=None,
+            device="cpu",
+            enhance=False,
+            diff_model_path=None,
+            diff_config_path=None,
+            only_diffusion=False,
+            use_spk_mix=False,
+            local_model_enabled=False,
+            local_model_selection="",
+        )
+
+
 def test_model_analysis_feature_retrieval(monkeypatch, tmp_path, webui_module):
     model_path = tmp_path / "voice.pth"
     config_path = tmp_path / "config.json"
@@ -177,6 +204,36 @@ def test_model_analysis_feature_retrieval(monkeypatch, tmp_path, webui_module):
     assert captured["feature_retrieval"] is True
     assert "特征检索模型" in message
     assert sid_update["choices"] == ["demo"]
+
+
+def test_model_analysis_feature_retrieval_missing_cluster(monkeypatch, tmp_path, webui_module):
+    model_path = tmp_path / "voice.pth"
+    config_path = tmp_path / "config.json"
+    model_path.write_bytes(b"fake")
+    config_path.write_text("{}")
+
+    dummy_sid = DummyDropdown()
+    monkeypatch.setattr(webui_module, "sid", dummy_sid)
+    monkeypatch.setattr(webui_module, "debug", False, raising=False)
+
+    class UploadFile:
+        def __init__(self, path):
+            self.name = str(path)
+
+    with pytest.raises(webui_module.gr.Error):
+        webui_module.modelAnalysis(
+            model_path=UploadFile(model_path),
+            config_path=UploadFile(config_path),
+            cluster_model_path=None,
+            device="cpu",
+            enhance=False,
+            diff_model_path=None,
+            diff_config_path=None,
+            only_diffusion=False,
+            use_spk_mix=False,
+            local_model_enabled=False,
+            local_model_selection="",
+        )
 
 
 def test_model_compression_requires_selection(webui_module):
