@@ -11,6 +11,10 @@ from itertools import chain
 from pathlib import Path
 
 # os.system("wget -P cvec/ https://huggingface.co/spaces/innnky/nanami/resolve/main/checkpoint_best_legacy_500.pt")
+
+numba_cache_dir = os.environ.setdefault("NUMBA_CACHE_DIR", str(Path.cwd() / "numba_cache"))
+os.makedirs(numba_cache_dir, exist_ok=True)
+
 import gradio as gr
 import librosa
 import numpy as np
@@ -411,27 +415,35 @@ if BUILD_WEBUI:  # pragma: no cover
                     compress_model_btn.click(model_compression, [model_to_compress], [compress_model_output])
                     
                     
-    with gr.Row(variant="panel"):
-        with gr.Column():
-            gr.Markdown(value="""
-                <font size=2> WebUI设置</font>
-                """)
-            debug_button = gr.Checkbox(label="Debug模式，如果向社区反馈BUG需要打开，打开后控制台可以显示具体错误提示", value=debug)
-    # refresh local model list
-    local_model_refresh_btn.click(local_model_refresh_fn, outputs=local_model_selection)
-    # set local enabled/disabled on tab switch
-    local_model_tab_upload.select(lambda: False, outputs=local_model_enabled)
-    local_model_tab_local.select(lambda: True, outputs=local_model_enabled)
+        gr.Markdown(value="""
+            <font size=2> WebUI设置</font>
+            """)
+        debug_button = gr.Checkbox(label="Debug模式，如果向社区反馈BUG需要打开，打开后控制台可以显示具体错误提示", value=debug)
+        # refresh local model list
+        local_model_refresh_btn.click(local_model_refresh_fn, outputs=local_model_selection)
+        # set local enabled/disabled on tab switch
+        local_model_tab_upload.select(lambda: False, outputs=local_model_enabled)
+        local_model_tab_local.select(lambda: True, outputs=local_model_enabled)
 
-    vc_submit.click(vc_fn, [sid, vc_input3, output_format, vc_transform,auto_f0,cluster_ratio, slice_db, noise_scale,pad_seconds,cl_num,lg_num,lgr_num,f0_predictor,enhancer_adaptive_key,cr_threshold,k_step,use_spk_mix,second_encoding,loudness_envelope_adjustment], [vc_output1, vc_output2])
-    vc_submit2.click(vc_fn2, [text2tts, tts_lang, tts_gender, tts_rate, tts_volume, sid, output_format, vc_transform,auto_f0,cluster_ratio, slice_db, noise_scale,pad_seconds,cl_num,lg_num,lgr_num,f0_predictor,enhancer_adaptive_key,cr_threshold,k_step,use_spk_mix,second_encoding,loudness_envelope_adjustment], [vc_output1, vc_output2])
+        vc_submit.click(vc_fn, [sid, vc_input3, output_format, vc_transform,auto_f0,cluster_ratio, slice_db, noise_scale,pad_seconds,cl_num,lg_num,lgr_num,f0_predictor,enhancer_adaptive_key,cr_threshold,k_step,use_spk_mix,second_encoding,loudness_envelope_adjustment], [vc_output1, vc_output2])
+        vc_submit2.click(vc_fn2, [text2tts, tts_lang, tts_gender, tts_rate, tts_volume, sid, output_format, vc_transform,auto_f0,cluster_ratio, slice_db, noise_scale,pad_seconds,cl_num,lg_num,lgr_num,f0_predictor,enhancer_adaptive_key,cr_threshold,k_step,use_spk_mix,second_encoding,loudness_envelope_adjustment], [vc_output1, vc_output2])
 
-    debug_button.change(debug_change,[],[])
-    model_load_button.click(modelAnalysis,[model_path,config_path,cluster_model_path,device,enhance,diff_model_path,diff_config_path,only_diffusion,use_spk_mix,local_model_enabled,local_model_selection],[sid,sid_output])
-    model_unload_button.click(modelUnload,[],[sid,sid_output])
+        debug_button.change(debug_change,[],[])
+        model_load_button.click(modelAnalysis,[model_path,config_path,cluster_model_path,device,enhance,diff_model_path,diff_config_path,only_diffusion,use_spk_mix,local_model_enabled,local_model_selection],[sid,sid_output])
+        model_unload_button.click(modelUnload,[],[sid,sid_output])
     if __name__ == "__main__":
-        os.system("start http://127.0.0.1:7860")
-        app.launch()
+        port_env = os.environ.get("GRADIO_SERVER_PORT")
+        if port_env and port_env.isdigit():
+            launch_port = int(port_env)
+        else:
+            try:
+                import socket
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                    sock.bind(("0.0.0.0", 0))
+                    launch_port = sock.getsockname()[1]
+            except Exception:
+                launch_port = 7860
+        app.launch(server_name="0.0.0.0", server_port=launch_port)
 
 
  
