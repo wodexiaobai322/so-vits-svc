@@ -16,6 +16,24 @@ pytest
 
 All tests should pass on a CPU-only machine. Use `-k` or `-m` selectors to narrow the scope if you extend the suite with slower scenarios.
 
+### End-to-end checks
+
+Real模型端到端测试位于 `tests/e2e/`，默认使用 `pytest.mark.e2e` 标记。运行前请确认以下资源已就绪：
+
+- `logs/44k/G_0.pth`
+- `logs/44k/D_0.pth`
+- `logs/44k/diffusion/model_0.pt`
+- `pretrain/checkpoint_best_legacy_500.pt`
+- 示例音频 `tests/fixtures/e2e/demo_input.wav`
+
+执行方式：
+
+```bash
+SOVITS_WEBUI_HEADLESS=1 pytest -m e2e tests/e2e
+```
+
+成功后会验证真实 `Svc` 推理与 `webUI.vc_fn` 调用链是否能够产出非空音频。
+
 ## Extending the Suite
 
 - Add new tests under `tests/`, grouping related behaviours per module.

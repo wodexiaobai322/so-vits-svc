@@ -34,6 +34,26 @@ warnings.filterwarnings(
     category=DeprecationWarning,
     module=r"^gradio\.routes",
 )
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    module=r".*torch\.utils\.tensorboard.*",
+)
+warnings.filterwarnings(
+    "ignore",
+    category=UserWarning,
+    module=r".*torch\.cuda.*",
+)
+warnings.filterwarnings(
+    "ignore",
+    message="CUDA initialization: Unexpected error.*",
+    category=UserWarning,
+)
+warnings.filterwarnings(
+    "ignore",
+    message="distutils Version classes are deprecated. Use packaging.version instead.",
+    category=DeprecationWarning,
+)
 
 import pytest
 import torch
@@ -48,11 +68,13 @@ def _ensure_stubs():
             return np.array([[value]], dtype=np.float32)
 
         librosa_stub = types.ModuleType("librosa")
+        librosa_stub._sovits_stub = True
         librosa_stub.feature = types.SimpleNamespace(rms=_rms)
         librosa_stub.to_mono = lambda wav: np.asarray(wav)
         librosa_stub.load = lambda path, sr=None: (np.zeros(1600, dtype=np.float32), 16000)
         librosa_stub.resample = lambda data, orig_sr, target_sr: np.asarray(data)
         filters_module = types.ModuleType("librosa.filters")
+        filters_module._sovits_stub = True
         filters_module.mel = lambda sr, n_fft, n_mels, fmin, fmax: np.ones((n_mels, n_fft // 2 + 1), dtype=np.float32)
         librosa_stub.filters = filters_module
         sys.modules["librosa"] = librosa_stub
@@ -70,7 +92,9 @@ def _ensure_stubs():
                 return [0] * len(data)
 
         sklearn_stub = types.ModuleType("sklearn")
+        sklearn_stub._sovits_stub = True
         sklearn_cluster_stub = types.ModuleType("sklearn.cluster")
+        sklearn_cluster_stub._sovits_stub = True
         sklearn_cluster_stub.KMeans = _DummyKMeans
         sklearn_cluster_stub.MiniBatchKMeans = _DummyKMeans
         sklearn_stub.cluster = sklearn_cluster_stub
@@ -78,12 +102,16 @@ def _ensure_stubs():
         sys.modules["sklearn.cluster"] = sklearn_cluster_stub
 
     if "faiss" not in sys.modules:
-        sys.modules["faiss"] = types.ModuleType("faiss")
+        faiss_stub = types.ModuleType("faiss")
+        faiss_stub._sovits_stub = True
+        sys.modules["faiss"] = faiss_stub
 
     if "torchaudio" not in sys.modules:
         torchaudio_stub = types.ModuleType("torchaudio")
+        torchaudio_stub._sovits_stub = True
         torchaudio_stub.load = lambda path: (torch.zeros(1, 1), 16000)
         transforms_module = types.ModuleType("torchaudio.transforms")
+        transforms_module._sovits_stub = True
 
         class _Resample:
             def __init__(self, orig_freq, new_freq):
@@ -104,7 +132,9 @@ def _ensure_stubs():
 
     if "diffusion" not in sys.modules:
         diffusion_stub = types.ModuleType("diffusion")
+        diffusion_stub._sovits_stub = True
         unit2mel_stub = types.ModuleType("diffusion.unit2mel")
+        unit2mel_stub._sovits_stub = True
 
         def _load_model_vocoder(*args, **kwargs):
             dummy_model = types.SimpleNamespace(
@@ -130,6 +160,26 @@ def _ensure_stubs():
         matplotlib_stub.colors = types.SimpleNamespace(Colormap=object, is_color_like=lambda *_: True)
         matplotlib_stub._api = types.SimpleNamespace()
         matplotlib_stub.rcParams = {}
+        matplotlib_stub._sovits_stub = True
+        pylab_stub = types.ModuleType("matplotlib.pylab")
+        pylab_stub._sovits_stub = True
+
+        class _DummyFigure:
+            def __init__(self):
+                self.canvas = types.SimpleNamespace(draw=lambda: None)
+
+        def _subplots(*args, **kwargs):
+            fig = _DummyFigure()
+            ax = types.SimpleNamespace(
+                imshow=lambda *a, **k: types.SimpleNamespace(),
+            )
+            return fig, ax
+
+        pylab_stub.subplots = _subplots
+        pylab_stub.colorbar = lambda *args, **kwargs: None
+        pylab_stub.close = lambda *args, **kwargs: None
+        matplotlib_stub.pylab = pylab_stub
+        sys.modules["matplotlib.pylab"] = pylab_stub
         sys.modules["matplotlib"] = matplotlib_stub
 
 
