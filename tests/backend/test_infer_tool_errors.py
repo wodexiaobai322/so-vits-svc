@@ -30,16 +30,6 @@ def build_stub_svc():
 
     svc.hubert_model = DummyHubert()
 
-    def fake_repeat(content, target_len, mode):
-        if not torch.is_tensor(content):
-            content = torch.as_tensor(content)
-        if content.dim() == 1:
-            content = content.unsqueeze(0)
-        return torch.ones(content.shape[0], target_len, dtype=content.dtype)
-
-    monkeypatch = pytest.MonkeyPatch()
-    monkeypatch.setattr(infer_tool.utils, "repeat_expand_2d", fake_repeat)
-
     class DummyResample:
         def __init__(self, orig_freq, new_freq):
             self.orig_freq = orig_freq
