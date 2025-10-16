@@ -1,6 +1,7 @@
 import math
 import os
 import time
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -13,12 +14,17 @@ pytest.importorskip("gradio_client")
 import gradio as gr  # noqa: E402
 from gradio_client import Client  # noqa: E402
 
+warnings.simplefilter("ignore", DeprecationWarning)
+
 os.environ.setdefault("SOVITS_WEBUI_HEADLESS", "1")
 
 import webUI  # noqa: E402
 
 
 @pytest.mark.e2e
+@pytest.mark.filterwarnings(r"ignore:websockets\.legacy is deprecated:DeprecationWarning")
+@pytest.mark.filterwarnings(r"ignore:websockets\.server.WebSocketServerProtocol is deprecated:DeprecationWarning")
+@pytest.mark.filterwarnings("ignore:'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated:DeprecationWarning")
 def test_vc_fn_end_to_end(monkeypatch, tmp_path):
     class DummySvc:
         def __init__(self):

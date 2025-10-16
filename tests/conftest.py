@@ -2,6 +2,38 @@ import importlib
 import os
 import sys
 import types
+import warnings
+
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    message="websockets\\.legacy is deprecated",
+)
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    message="websockets\\.server\\.WebSocketServerProtocol is deprecated",
+)
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    message="'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated",
+)
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    module=r"^websockets\.legacy",
+)
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    module=r"^uvicorn\.protocols\.websockets",
+)
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    module=r"^gradio\.routes",
+)
 
 import pytest
 import torch
